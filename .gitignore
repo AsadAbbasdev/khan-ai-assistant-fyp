@@ -1,0 +1,27 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables (IMPORTANT - never commit!)
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Data files (generated)
+Data/speech.mp3
+Data/*.jpg
+Data/ChatLog.json
+
+# Sound files (auto-generated)
+Frontend/Graphics/sounds/
+
+# PyQt compiled
+*.ui
+
+# OS files
+.DS_Store
+Thumbs.db
