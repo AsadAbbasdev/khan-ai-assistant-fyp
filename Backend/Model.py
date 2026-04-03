@@ -11,8 +11,10 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 env_path = os.path.join(PROJECT_DIR, ".env")
 env_vars = dotenv_values(env_path)
 
-cohereAPIKey = env_vars.get("CohereAPIKey")
+def get_env(key):
+    return env_vars.get(key) or os.environ.get(key)
 
+cohereAPIKey = get_env("CohereAPIKey")
 co = cohere.Client(api_key=cohereAPIKey)
 
 funcs = [
@@ -51,16 +53,15 @@ ChatHistory = [
     {"role": "user", "message": "open chrome and tell me about Pakistan?"},
     {"role": "Chatbot", "message": "open chrome, general tell me about pakistan?"},
     {"role": "user", "message": "open chrome and firefox?"},
-    {"role": "Chatbot", "message": "open chrome, open firefoxn?"},
+    {"role": "Chatbot", "message": "open chrome, open firefox?"},
     {"role": "user", "message": "What is today's date and by the way remind me that i have a meeting on?"},
-    {"role": "Chatbot", "message": "general What is today's date, reminder 11:00pm 5th nov  meeting?"},
+    {"role": "Chatbot", "message": "general What is today's date, reminder 11:00pm 5th nov meeting?"},
     {"role": "user", "message": "chat with me.?"},
     {"role": "user", "message": "general chat with me.?"},
 ]
 
 def FirstLayerDMM(prompt: str = "test"):
     messages.append({"role": "user", "content": f"{prompt}"})
-
     stream = co.chat_stream(
         model='command-r7b-12-2024',
         message=prompt,
@@ -70,30 +71,24 @@ def FirstLayerDMM(prompt: str = "test"):
         connectors=[],
         preamble=preamble
     )
-
     response = ""
     for event in stream:
         if event.event_type == "text-generation":
             response += event.text
-        
     response = response.replace("\n", "")
     response = response.split(",")
     response = [i.strip() for i in response]
-
     temp = []
     for task in response:
         for func in funcs:
             if task.startswith(func):
                 temp.append(task)
-
     response = temp
-
     if "(query)" in response:
-        newresponse = FirstLayerDMM(prompt=prompt)
-        return newresponse
+        return FirstLayerDMM(prompt=prompt)
     else:
         return response
-    
+
 if __name__ == "__main__":
     while True:
         print(FirstLayerDMM(input(">>> ")))

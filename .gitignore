@@ -25,3 +25,7 @@ Frontend/Graphics/sounds/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temp data files
+Frontend/Files/database.data
+Frontend/Files/responses.data
