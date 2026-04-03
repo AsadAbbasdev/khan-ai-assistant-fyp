@@ -50,7 +50,6 @@ Whether you're on a **desktop app** or accessing it through a **web browser on y
 | 🎵 Play Music on YouTube | ✅ | ✅ |
 | 🔍 Google & YouTube Search | ✅ | ✅ |
 | 📝 Content Writing | ✅ | ✅ |
-| ⏰ Reminders | ✅ | 🔜 |
 | 🎵 Sci-Fi Sound Effects | ✅ | ✅ |
 | 📱 Mobile Responsive | — | ✅ |
 
@@ -87,8 +86,6 @@ KHAN-AI-ASSISTANT-FYP/
 ├── 📄 main.py                    # Entry point (Desktop + Web modes)
 ├── 📄 server.py                  # FastAPI web server
 ├── 📄 requirements.txt           # All dependencies
-├── 📄 Procfile                   # Railway deployment config
-├── 📄 railway.json               # Railway settings
 ├── 📄 .env                       # API keys (not committed)
 │
 ├── 📁 Backend/                   # Core AI logic
@@ -149,15 +146,11 @@ python -m venv .venv
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Setup environment variables
-cp .env.example .env
-# Edit .env with your API keys
+# 4. Setup environment variables — create a .env file:
 ```
 
-#### Configure `.env`
-
 ```env
-Username          = Abbas
+Username          = Your Name
 Assistantname     = Khan
 GroqAPIKey        = your_groq_api_key
 CohereAPIKey      = your_cohere_api_key
@@ -166,13 +159,11 @@ AssistantVoice    = en-US-GuyNeural
 InputLanguage     = en-US
 ```
 
-#### Run
-
 ```bash
-# Desktop Mode (PyQt5 GUI)
+# 5. Run Desktop Mode
 python main.py
 
-# Web Mode (FastAPI Server)
+# OR Run Web Mode
 python main.py --web
 # Then open: http://localhost:8000
 ```
@@ -187,6 +178,7 @@ python main.py --web
 | **Cohere** (Decision Model) | ✅ Free | [dashboard.cohere.com](https://dashboard.cohere.com) |
 | **HuggingFace** (Image Gen) | ✅ Free | [huggingface.co](https://huggingface.co/settings/tokens) |
 
+---
 
 ## 🛠️ Tech Stack
 
@@ -207,8 +199,6 @@ python main.py --web
 │              │  Web Speech API · WebSocket              │
 ├──────────────┼──────────────────────────────────────────┤
 │   Search     │  DuckDuckGo · BeautifulSoup4             │
-├──────────────┼──────────────────────────────────────────┤
-│   Deploy     │  Railway · GitHub Actions (Auto CD)      │
 └──────────────┴──────────────────────────────────────────┘
 ```
 
@@ -217,31 +207,31 @@ python main.py --web
 ## 🎯 How It Works
 
 ```
-User Input (Voice/Text)
-        │
-        ▼
-┌───────────────────┐
-│  Decision Model   │  ◄── Cohere R7B
-│  (What to do?)    │
-└───────┬───────────┘
-        │
-   ┌────┴─────────────────────────┐
-   │                              │
-   ▼                              ▼
-General Query              Realtime Query
-   │                              │
-   ▼                              ▼
-ChatBot                   Web Search
+User Input (Voice / Text)
+          │
+          ▼
+┌─────────────────────┐
+│   Decision Model    │  ◄── Cohere R7B
+│   (What to do?)     │
+└──────────┬──────────┘
+           │
+    ┌──────┴──────────────────────┐
+    │                             │
+    ▼                             ▼
+General Query             Realtime Query
+    │                             │
+    ▼                             ▼
+ ChatBot                   Web Search
 (Groq LLaMA)           (DuckDuckGo + Groq)
-   │                              │
-   └────────────┬─────────────────┘
-                │
-                ▼
-         Text Response
-                │
-                ▼
-      Text-to-Speech (TTS)
-      + Display on Screen
+    │                             │
+    └─────────────┬───────────────┘
+                  │
+                  ▼
+          Text Response
+                  │
+                  ▼
+       Text-to-Speech (TTS)
+       + Display on Screen
 ```
 
 ---
@@ -271,6 +261,23 @@ ChatBot                   Web Search
 
 ---
 
+## 🤝 Contributing
+
+Khan A.I. is open source and we welcome contributions from everyone!
+
+If you want to improve something, fix a bug, or add a new feature — here's how:
+
+1. 🍴 **Fork** this repository
+2. 🌿 **Create** a new branch → `git checkout -b feature/your-feature`
+3. 💻 **Make** your changes and test them
+4. 📤 **Push** and open a **Pull Request**
+
+Found a bug or have a suggestion? Open an **[Issue](../../issues)** — we read every one!
+
+For full contribution guidelines, see the **[LICENSE](LICENSE)** file. 📄
+
+---
+
 ## 👨‍💻 Developer
 
 <div align="center">
@@ -279,7 +286,7 @@ ChatBot                   Web Search
 *Machine Learning Engineer & AI Scientist*
 *Specializing in Artificial Intelligence & Natural Language Processing*
 
-[![GitHub](https://img.shields.io/badge/GitHub-Follow-00FFE5?style=for-the-badge&logo=github&logoColor=white&labelColor=060A10)](https://github.com/AsadAbbasdev)
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-00FFE5?style=for-the-badge&logo=github&logoColor=white&labelColor=060A10)](https://github.com/YOUR_USERNAME)
 
 </div>
 
@@ -287,10 +294,7 @@ ChatBot                   Web Search
 
 ## 📄 License
 
-```
-MIT License — Free to use, modify, and distribute.
-See LICENSE file for details.
-```
+MIT License — see [LICENSE](LICENSE) for details and contribution guidelines.
 
 ---
 
