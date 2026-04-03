@@ -14,7 +14,10 @@ env_path = os.path.join(PROJECT_DIR, ".env")
 env_vars = dotenv_values(env_path)
 
 def get_env(key):
-    return env_vars.get(key) or os.environ.get(key)
+    return (env_vars.get(key) or 
+            os.environ.get(key) or 
+            os.environ.get(key.upper()) or
+            os.environ.get(key.lower()))
 
 Username      = get_env("Username")
 Assistantname = get_env("Assistantname")
