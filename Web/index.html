@@ -642,7 +642,8 @@ body::after {
 /* ═══════════════════════════════════════════════════
    CONFIG
 ═══════════════════════════════════════════════════ */
-const WS_URL      = `ws://${location.host}/ws/chat`;
+const WS_PROTOCOL = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL      = `${WS_PROTOCOL}//${location.host}/ws/chat`;
 const INTRO_TEXT  = `[ SYSTEM BOOT... OK ]
 [ NEURAL NETWORK... ONLINE ]
 [ VOICE MODULE... ACTIVE ]
