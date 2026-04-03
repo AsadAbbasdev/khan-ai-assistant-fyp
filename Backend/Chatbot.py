@@ -16,10 +16,6 @@ Username      = os.environ.get("Username")
 Assistantname = os.environ.get("Assistantname")
 GroqAPIKey    = os.environ.get("GroqAPIKey")
 
-print(f"DEBUG - GroqAPIKey: {os.environ.get('GroqAPIKey', 'NOT FOUND')}")
-print(f"DEBUG - GROQ_API_KEY: {os.environ.get('GROQ_API_KEY', 'NOT FOUND')}")
-print(f"DEBUG - All env keys: {list(os.environ.keys())}")
-
 client = Groq(api_key=GroqAPIKey)
 
 messages = []
