@@ -1,27 +1,20 @@
 from groq import Groq
 from json import load, dump
 import datetime
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 import os
 
 # ==================== PATH FIX ====================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 # ==================================================
 
-# ── Works both locally (.env file) AND on Railway (environment variables) ──
-env_path = os.path.join(PROJECT_DIR, ".env")
-env_vars = dotenv_values(env_path)
+# Load .env file if exists (local), Railway uses os.environ directly
+load_dotenv(os.path.join(PROJECT_DIR, ".env"))
 
-def get_env(key):
-    return (env_vars.get(key) or 
-            os.environ.get(key) or 
-            os.environ.get(key.upper()) or
-            os.environ.get(key.lower()))
-
-Username      = get_env("Username")
-Assistantname = get_env("Assistantname")
-GroqAPIKey    = get_env("GroqAPIKey")
+Username      = os.environ.get("Username")
+Assistantname = os.environ.get("Assistantname")
+GroqAPIKey    = os.environ.get("GroqAPIKey")
 
 client = Groq(api_key=GroqAPIKey)
 

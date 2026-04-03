@@ -1,20 +1,16 @@
 import cohere
 from rich import print
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 import os
 
 # ==================== PATH FIX ====================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 # ==================================================
 
-env_path = os.path.join(PROJECT_DIR, ".env")
-env_vars = dotenv_values(env_path)
+load_dotenv(os.path.join(PROJECT_DIR, ".env"))
 
-def get_env(key):
-    return env_vars.get(key) or os.environ.get(key)
-
-cohereAPIKey = get_env("CohereAPIKey")
+cohereAPIKey = os.environ.get("CohereAPIKey")
 co = cohere.Client(api_key=cohereAPIKey)
 
 funcs = [
