@@ -150,7 +150,7 @@ pip install -r requirements.txt
 ```
 
 ```env
-Username          = Your Name
+Username          = Abbas
 Assistantname     = Khan
 GroqAPIKey        = your_groq_api_key
 CohereAPIKey      = your_cohere_api_key
@@ -286,7 +286,7 @@ For full contribution guidelines, see the **[LICENSE](LICENSE)** file. 📄
 *Machine Learning Engineer & AI Scientist*
 *Specializing in Artificial Intelligence & Natural Language Processing*
 
-[![GitHub](https://img.shields.io/badge/GitHub-Follow-00FFE5?style=for-the-badge&logo=github&logoColor=white&labelColor=060A10)](https://github.com/YOUR_USERNAME)
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-00FFE5?style=for-the-badge&logo=github&logoColor=white&labelColor=060A10)](https://github.com/AsadAbbasdev)
 
 </div>
 
