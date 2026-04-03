@@ -1,10 +1,24 @@
 """
 server.py  —  Khan A.I. FastAPI Web Server
-==========================================
-Place in project ROOT. Run:
-  Local  : uvicorn server:app --host 0.0.0.0 --port 8000
-  Deploy : Procfile handles this automatically
 """
+
+# ── Load environment FIRST before any other imports ──────────────────────────
+from dotenv import load_dotenv
+import os
+
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+# ── Verify critical keys are present ─────────────────────────────────────────
+# Railway uses its own env vars — make sure they map correctly
+_groq_key    = os.environ.get("GroqAPIKey") or os.environ.get("GROQ_API_KEY")
+_cohere_key  = os.environ.get("CohereAPIKey") or os.environ.get("COHERE_API_KEY")
+
+if _groq_key:
+    os.environ["GroqAPIKey"]    = _groq_key
+    os.environ["GROQ_API_KEY"]  = _groq_key   # for groq library auto-detection
+if _cohere_key:
+    os.environ["CohereAPIKey"]  = _cohere_key
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
@@ -13,11 +27,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import base64
 import json
-import os
 import sys
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.join(BASE_DIR, "Backend")
 DATA_DIR    = os.path.join(BASE_DIR, "Data")
 sys.path.insert(0, BACKEND_DIR)
