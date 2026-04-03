@@ -157,7 +157,7 @@ cp .env.example .env
 #### Configure `.env`
 
 ```env
-Username          = Your Name
+Username          = Abbas
 Assistantname     = Khan
 GroqAPIKey        = your_groq_api_key
 CohereAPIKey      = your_cohere_api_key
@@ -187,35 +187,6 @@ python main.py --web
 | **Cohere** (Decision Model) | ✅ Free | [dashboard.cohere.com](https://dashboard.cohere.com) |
 | **HuggingFace** (Image Gen) | ✅ Free | [huggingface.co](https://huggingface.co/settings/tokens) |
 
----
-
-## ☁️ Deploy Your Own Instance
-
-### Deploy on Railway (Recommended — Free)
-
-1. **Fork this repository**
-
-2. **Go to [railway.app](https://railway.app)** → Login with GitHub
-
-3. **New Project** → **Deploy from GitHub repo** → Select your fork
-
-4. **Add Environment Variables** in Railway dashboard:
-```
-GroqAPIKey        = your_key
-GROQ_API_KEY      = your_key
-CohereAPIKey      = your_key
-HuggingFaceAPIKey = your_key
-Username          = Your Name
-Assistantname     = Khan
-AssistantVoice    = en-US-GuyNeural
-InputLanguage     = en-US
-```
-
-5. **Deploy!** Railway will give you a live URL in 2-3 minutes ✅
-
-> **Auto-Deploy:** Any push to `main` branch automatically redeploys! 🚀
-
----
 
 ## 🛠️ Tech Stack
 
@@ -308,7 +279,7 @@ ChatBot                   Web Search
 *Machine Learning Engineer & AI Scientist*
 *Specializing in Artificial Intelligence & Natural Language Processing*
 
-[![GitHub](https://img.shields.io/badge/GitHub-Follow-00FFE5?style=for-the-badge&logo=github&logoColor=white&labelColor=060A10)](https://github.com/YOUR_USERNAME)
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-00FFE5?style=for-the-badge&logo=github&logoColor=white&labelColor=060A10)](https://github.com/AsadAbbasdev)
 
 </div>
 
