@@ -80,6 +80,83 @@ async def root():
 async def info():
     return {"assistant": Assistantname, "user": Username}
 
+# ── Web search using requests directly (Railway compatible) ──────────────────
+def web_search_and_answer(query: str) -> str:
+    """
+    Searches the web using requests + BeautifulSoup (no ddgs dependency).
+    Falls back to Groq knowledge if search fails.
+    """
+    import datetime
+    import requests as req
+    from bs4 import BeautifulSoup
+    from groq import Groq
+
+    groq_client = Groq(api_key=os.environ.get("GroqAPIKey"))
+
+    search_context = ""
+
+    # Try DuckDuckGo HTML (no API needed)
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/120.0.0.0 Safari/537.36"
+        }
+        url  = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
+        resp = req.get(url, headers=headers, timeout=10)
+
+        if resp.status_code == 200:
+            soup    = BeautifulSoup(resp.text, "html.parser")
+            results = soup.find_all("a", class_="result__a", limit=5)
+            snippets = soup.find_all("a", class_="result__snippet", limit=5)
+
+            for i, (r, s) in enumerate(zip(results, snippets)):
+                search_context += f"Result {i+1}: {r.get_text()} — {s.get_text()}\n"
+
+    except Exception as e:
+        print(f"[WebSearch] DuckDuckGo HTML failed: {e}")
+
+    # Try wttr.in for weather queries
+    if any(w in query.lower() for w in ["weather", "temperature", "forecast", "rain", "sunny"]):
+        try:
+            city = query.lower()
+            for w in ["weather", "temperature", "forecast", "in", "of", "how is the", "what is the"]:
+                city = city.replace(w, "").strip()
+            city = city.strip()
+            weather_url  = f"https://wttr.in/{city.replace(' ', '+')}?format=3"
+            weather_resp = req.get(weather_url, timeout=8)
+            if weather_resp.status_code == 200:
+                search_context += f"\nCurrent Weather: {weather_resp.text}\n"
+        except Exception as e:
+            print(f"[WebSearch] Weather API failed: {e}")
+
+    # Now ask Groq with search context
+    now = datetime.datetime.now()
+    system_prompt = f"""You are {Assistantname}, an advanced AI assistant with real-time information.
+Today is {now.strftime('%A, %d %B %Y')} and the time is {now.strftime('%H:%M')}.
+Answer the user's question professionally and accurately based on the search results provided."""
+
+    messages_list = []
+    if search_context:
+        messages_list.append({
+            "role": "system",
+            "content": f"Search results:\n{search_context}"
+        })
+    messages_list.append({"role": "user", "content": query})
+
+    try:
+        completion = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "system", "content": system_prompt}] + messages_list,
+            temperature=0.7,
+            max_tokens=1024,
+            stream=False,
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"[WebSearch] Groq error: {e}")
+        return "Sorry, I couldn't fetch the information right now. Please try again."
+
 # ── Browser automation helper ─────────────────────────────────────────────────
 def resolve_browser_action(decision: str) -> dict | None:
     """
@@ -211,7 +288,8 @@ async def chat_ws(ws: WebSocket):
                 elif d.startswith("realtime"):
                     q = d.removeprefix("realtime").strip() or query
                     await send({"type": "status", "text": "Searching the web..."})
-                    answer = await asyncio.to_thread(RealtimeSearchEngine, q)
+                    # Use direct search instead of ddgs which may be blocked
+                    answer = await asyncio.to_thread(web_search_and_answer, q)
                     await stream_answer(ws, answer)
                     answered = True
 
