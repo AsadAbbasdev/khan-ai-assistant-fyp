@@ -83,71 +83,83 @@ async def info():
 # ── Web search using requests directly (Railway compatible) ──────────────────
 def web_search_and_answer(query: str) -> str:
     """
-    Searches the web using requests + BeautifulSoup (no ddgs dependency).
-    Falls back to Groq knowledge if search fails.
+    Fetches real-time data and answers via Groq.
+    Uses wttr.in for weather and DuckDuckGo HTML for general search.
     """
     import datetime
     import requests as req
-    from bs4 import BeautifulSoup
     from groq import Groq
 
-    groq_client = Groq(api_key=os.environ.get("GroqAPIKey"))
-
+    groq_client   = Groq(api_key=os.environ.get("GroqAPIKey"))
     search_context = ""
+    now            = datetime.datetime.now()
 
-    # Try DuckDuckGo HTML (no API needed)
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/120.0.0.0 Safari/537.36"
-        }
-        url  = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-        resp = req.get(url, headers=headers, timeout=10)
+    query_lower = query.lower()
 
-        if resp.status_code == 200:
-            soup    = BeautifulSoup(resp.text, "html.parser")
-            results = soup.find_all("a", class_="result__a", limit=5)
-            snippets = soup.find_all("a", class_="result__snippet", limit=5)
-
-            for i, (r, s) in enumerate(zip(results, snippets)):
-                search_context += f"Result {i+1}: {r.get_text()} — {s.get_text()}\n"
-
-    except Exception as e:
-        print(f"[WebSearch] DuckDuckGo HTML failed: {e}")
-
-    # Try wttr.in for weather queries
-    if any(w in query.lower() for w in ["weather", "temperature", "forecast", "rain", "sunny"]):
+    # ── Weather query — wttr.in ───────────────────────────────────────────────
+    if any(w in query_lower for w in ["weather", "temperature", "forecast",
+                                       "rain", "sunny", "humid", "hot", "cold",
+                                       "climate", "mausam"]):
         try:
-            city = query.lower()
-            for w in ["weather", "temperature", "forecast", "in", "of", "how is the", "what is the"]:
-                city = city.replace(w, "").strip()
+            # Extract city name
+            city = query_lower
+            for remove in ["how is the", "what is the", "tell me", "weather in",
+                           "weather of", "temperature in", "temperature of",
+                           "forecast for", "forecast in", "weather", "temperature",
+                           "forecast", "mausam", "?", "."]:
+                city = city.replace(remove, "").strip()
             city = city.strip()
-            weather_url  = f"https://wttr.in/{city.replace(' ', '+')}?format=3"
-            weather_resp = req.get(weather_url, timeout=8)
-            if weather_resp.status_code == 200:
-                search_context += f"\nCurrent Weather: {weather_resp.text}\n"
+            if not city:
+                city = "Peshawar"
+            print(f"[Weather] Fetching weather for: {city}")
+            url  = f"https://wttr.in/{city.replace(' ', '+')}?format=4"
+            resp = req.get(url, timeout=10,
+                           headers={"User-Agent": "curl/7.68.0"})
+            if resp.status_code == 200:
+                search_context += f"Current weather data:\n{resp.text}\n"
+                print(f"[Weather] Got: {resp.text}")
         except Exception as e:
-            print(f"[WebSearch] Weather API failed: {e}")
+            print(f"[Weather] wttr.in failed: {e}")
 
-    # Now ask Groq with search context
-    now = datetime.datetime.now()
-    system_prompt = f"""You are {Assistantname}, an advanced AI assistant with real-time information.
-Today is {now.strftime('%A, %d %B %Y')} and the time is {now.strftime('%H:%M')}.
-Answer the user's question professionally and accurately based on the search results provided."""
+    # ── General search — DuckDuckGo HTML ─────────────────────────────────────
+    if not search_context:
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/120.0.0.0 Safari/537.36"
+            }
+            url  = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
+            resp = req.get(url, headers=headers, timeout=12)
+            if resp.status_code == 200:
+                from bs4 import BeautifulSoup
+                soup     = BeautifulSoup(resp.text, "html.parser")
+                snippets = soup.find_all("a", class_="result__snippet", limit=5)
+                titles   = soup.find_all("a", class_="result__a", limit=5)
+                for t, s in zip(titles, snippets):
+                    search_context += f"• {t.get_text()}: {s.get_text()}\n"
+                print(f"[Search] Got {len(snippets)} results")
+        except Exception as e:
+            print(f"[Search] DuckDuckGo failed: {e}")
 
-    messages_list = []
+    # ── Ask Groq with context ─────────────────────────────────────────────────
+    system_msg = (
+        f"You are {Assistantname}, an advanced AI assistant.\n"
+        f"Current date/time: {now.strftime('%A, %d %B %Y, %H:%M')}.\n"
+        f"Answer the user's question accurately and professionally."
+    )
+
+    user_content = query
     if search_context:
-        messages_list.append({
-            "role": "system",
-            "content": f"Search results:\n{search_context}"
-        })
-    messages_list.append({"role": "user", "content": query})
+        user_content = f"Based on this data:\n{search_context}\n\nAnswer: {query}"
 
     try:
         completion = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": system_prompt}] + messages_list,
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user",   "content": user_content}
+            ],
             temperature=0.7,
             max_tokens=1024,
             stream=False,
@@ -155,7 +167,7 @@ Answer the user's question professionally and accurately based on the search res
         return completion.choices[0].message.content.strip()
     except Exception as e:
         print(f"[WebSearch] Groq error: {e}")
-        return "Sorry, I couldn't fetch the information right now. Please try again."
+        return "Sorry, I encountered an error. Please try again."
 
 # ── Browser automation helper ─────────────────────────────────────────────────
 def resolve_browser_action(decision: str) -> dict | None:
@@ -288,8 +300,11 @@ async def chat_ws(ws: WebSocket):
                 elif d.startswith("realtime"):
                     q = d.removeprefix("realtime").strip() or query
                     await send({"type": "status", "text": "Searching the web..."})
-                    # Use direct search instead of ddgs which may be blocked
-                    answer = await asyncio.to_thread(web_search_and_answer, q)
+                    try:
+                        answer = await asyncio.to_thread(web_search_and_answer, q)
+                    except Exception as e:
+                        print(f"[WS] Realtime search error: {e}")
+                        answer = "Sorry, search failed. Please try again."
                     await stream_answer(ws, answer)
                     answered = True
 
