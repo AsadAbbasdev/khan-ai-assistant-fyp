@@ -133,21 +133,39 @@ def resolve_browser_action(decision: str) -> dict | None:
 # ── Image generation helper ───────────────────────────────────────────────────
 async def generate_and_serve_images(prompt: str) -> list[str]:
     """
-    Generates images and returns list of URLs accessible from browser.
+    Generates images and returns list of base64 data URIs.
+    No file system dependency — works on Railway perfectly.
     """
     try:
-        from ImageGeneration import generate_images
-        await generate_images(prompt)
+        import requests as req
+        import asyncio
+        from random import randint
 
-        # Find generated image files
-        safe_prompt = prompt.replace(" ", "_")
-        urls = []
-        for i in range(1, 5):
-            filename = f"{safe_prompt}{i}.jpg"
-            filepath = os.path.join(DATA_DIR, filename)
-            if os.path.exists(filepath):
-                urls.append(f"/data/{filename}")
-        return urls
+        api_key   = os.environ.get("HuggingFaceAPIKey") or os.environ.get("HUGGINGFACE_API_KEY")
+        API_URL   = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
+        headers   = {"Authorization": f"Bearer {api_key}"}
+
+        async def query_single(seed):
+            payload = {
+                "inputs": f"{prompt}, high quality, 4k, detailed",
+                "parameters": {"seed": seed}
+            }
+            response = await asyncio.to_thread(
+                req.post, API_URL, headers=headers, json=payload, timeout=120
+            )
+            if response.status_code == 200:
+                # Convert to base64 data URI
+                import base64
+                b64 = base64.b64encode(response.content).decode("utf-8")
+                return f"data:image/jpeg;base64,{b64}"
+            else:
+                print(f"[ImageGen] Error {response.status_code}: {response.text}")
+                return None
+
+        tasks   = [query_single(randint(1, 1000000)) for _ in range(4)]
+        results = await asyncio.gather(*tasks)
+        return [r for r in results if r is not None]
+
     except Exception as e:
         print(f"[ImageGen] Error: {e}")
         return []
