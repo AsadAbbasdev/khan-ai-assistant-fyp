@@ -2,7 +2,6 @@ from groq import Groq
 from json import load, dump
 import datetime
 from dotenv import load_dotenv
-from ddgs import DDGS
 import os
 
 # ==================== PATH FIX ====================
@@ -24,6 +23,8 @@ System = f"""Hello, I am {Username}, You are a very accurate and advanced AI cha
 
 chatlog_path = os.path.join(PROJECT_DIR, "Data", "ChatLog.json")
 os.makedirs(os.path.dirname(chatlog_path), exist_ok=True)
+
+messages = []
 try:
     with open(chatlog_path, "r") as f:
         messages = load(f)
@@ -32,9 +33,12 @@ except:
         dump([], f)
 
 def GoogleSearch(query):
+    """Search using DuckDuckGo with fallback."""
     Answer = f"The search results for '{query}' are:\n[start]\n"
-    with DDGS() as ddgs:
-        results = list(ddgs.text(query, max_results=5))
+    try:
+        from ddgs import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=5))
         if not results:
             Answer += "No search results found.\n"
         else:
@@ -43,6 +47,9 @@ def GoogleSearch(query):
                 snippet = r.get("body", "No Description")
                 url     = r.get("href", "No URL")
                 Answer += f"Title: {title}\nURL: {url}\nDescription: {snippet}\n\n"
+    except Exception as e:
+        print(f"[Search] DuckDuckGo error: {e}")
+        Answer += f"Search unavailable. Please answer from your knowledge about: {query}\n"
     Answer += "[end]"
     return Answer
 
@@ -59,37 +66,61 @@ SystemChatBot = [
 
 def Information():
     current_date_time = datetime.datetime.now()
-    data  = f"Use This Real-time Information if needed:\n"
+    data  = "Use This Real-time Information if needed:\n"
     data += f"Day: {current_date_time.strftime('%A')}\n"
     data += f"Date: {current_date_time.strftime('%d')}\n"
     data += f"Month: {current_date_time.strftime('%B')}\n"
     data += f"Year: {current_date_time.strftime('%Y')}\n"
-    data += f"Time: {current_date_time.strftime('%H')} hours, {current_date_time.strftime('%M')} minutes, {current_date_time.strftime('%S')} seconds.\n"
+    data += f"Time: {current_date_time.strftime('%H')} hours, "
+    data += f"{current_date_time.strftime('%M')} minutes, "
+    data += f"{current_date_time.strftime('%S')} seconds.\n"
     return data
 
 def RealtimeSearchEngine(prompt):
     global SystemChatBot, messages
-    with open(chatlog_path, "r") as f:
-        messages = load(f)
+
+    # Load chat history safely
+    try:
+        with open(chatlog_path, "r") as f:
+            messages = load(f)
+    except:
+        messages = []
+
     messages.append({"role": "user", "content": f"{prompt}"})
-    SystemChatBot.append({"role": "system", "content": GoogleSearch(prompt)})
-    completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=SystemChatBot + [{"role": "system", "content": Information()}] + messages,
-        temperature=0.7,
-        max_tokens=2048,
-        top_p=1,
-        stream=True,
-        stop=None
-    )
-    Answer = ""
-    for chunk in completion:
-        if chunk.choices[0].delta.content:
-            Answer += chunk.choices[0].delta.content
-    Answer = Answer.strip().replace("</s>", "")
+
+    # Search
+    search_results = GoogleSearch(prompt)
+    SystemChatBot.append({"role": "system", "content": search_results})
+
+    # Generate answer
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=SystemChatBot + [{"role": "system", "content": Information()}] + messages,
+            temperature=0.7,
+            max_tokens=2048,
+            top_p=1,
+            stream=True,
+            stop=None
+        )
+        Answer = ""
+        for chunk in completion:
+            if chunk.choices[0].delta.content:
+                Answer += chunk.choices[0].delta.content
+        Answer = Answer.strip().replace("</s>", "")
+    except Exception as e:
+        print(f"[RealtimeSearch] Groq error: {e}")
+        Answer = "Sorry, I encountered an error while searching. Please try again."
+
     messages.append({"role": "assistant", "content": Answer})
-    with open(chatlog_path, "w") as f:
-        dump(messages, f, indent=4)
+
+    # Save chat history safely
+    try:
+        with open(chatlog_path, "w") as f:
+            dump(messages, f, indent=4)
+    except:
+        pass  # Railway par file write fail ho sakti hai — okay hai
+
     SystemChatBot.pop()
     return AnswerModifier(Answer=Answer)
 
