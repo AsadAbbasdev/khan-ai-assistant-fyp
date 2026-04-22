@@ -8,6 +8,7 @@ requests
 beautifulsoup4
 duckduckgo-search
 ddgs
+tavily-python
 edge-tts
 pygame
 Pillow

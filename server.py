@@ -80,90 +80,94 @@ async def root():
 async def info():
     return {"assistant": Assistantname, "user": Username}
 
-# ── Web search using requests directly (Railway compatible) ──────────────────
+# ── Web search using Tavily API (Railway compatible) ─────────────────────────
 def web_search_and_answer(query: str) -> str:
     """
-    Fetches real-time data and answers via Groq.
-    Uses wttr.in for weather and DuckDuckGo HTML for general search.
+    Uses Tavily for general search + wttr.in for weather.
+    Both work perfectly on Railway.
     """
     import datetime
     import requests as req
     from groq import Groq
 
-    groq_client   = Groq(api_key=os.environ.get("GroqAPIKey"))
+    groq_client    = Groq(api_key=os.environ.get("GroqAPIKey"))
+    tavily_key     = os.environ.get("TavilyAPIKey", "")
     search_context = ""
     now            = datetime.datetime.now()
+    query_lower    = query.lower()
 
-    query_lower = query.lower()
-
-    # ── Weather query — wttr.in ───────────────────────────────────────────────
+    # ── Weather — wttr.in ─────────────────────────────────────────────────────
     if any(w in query_lower for w in ["weather", "temperature", "forecast",
-                                       "rain", "sunny", "humid", "hot", "cold",
-                                       "climate", "mausam"]):
+                                       "rain", "sunny", "humid", "climate", "mausam"]):
         try:
             import re
-            # Extract city — look for "in X" or "of X" pattern
-            city_match = re.search(r'\bin\s+([a-zA-Z\s]+?)(?:\?|$|\.)', query_lower)
-            if not city_match:
-                city_match = re.search(r'\bof\s+([a-zA-Z\s]+?)(?:\?|$|\.)', query_lower)
-            
-            if city_match:
-                city = city_match.group(1).strip()
-            else:
-                # Fallback — remove common words
-                city = query_lower
-                for remove in ["how is the", "how was the", "what is the",
-                               "what was the", "tell me", "weather in", "weather of",
-                               "temperature in", "temperature of", "forecast for",
-                               "forecast in", "weather", "temperature", "forecast",
-                               "mausam", "current", "today", "?", "."]:
-                    city = city.replace(remove, "").strip()
-                city = city.strip()
+            city_match = (re.search(r'\bin\s+([a-zA-Z\s]+?)(?:\?|$|\.)', query_lower) or
+                          re.search(r'\bof\s+([a-zA-Z\s]+?)(?:\?|$|\.)', query_lower))
+            city = city_match.group(1).strip() if city_match else "Peshawar"
+            if len(city) < 2: city = "Peshawar"
 
-            if not city or len(city) < 2:
-                city = "Peshawar"
-
-            print(f"[Weather] Fetching weather for: {city}")
-            url  = f"https://wttr.in/{city.replace(' ', '+')}?format=4"
-            resp = req.get(url, timeout=10,
-                           headers={"User-Agent": "curl/7.68.0"})
+            resp = req.get(
+                f"https://wttr.in/{city.replace(' ', '+')}?format=4",
+                headers={"User-Agent": "curl/7.68.0"}, timeout=10
+            )
             if resp.status_code == 200:
-                search_context += f"Current weather data:\n{resp.text}\n"
-                print(f"[Weather] Got: {resp.text}")
+                search_context += f"Current weather: {resp.text}\n"
+                print(f"[Weather] {resp.text}")
         except Exception as e:
-            print(f"[Weather] wttr.in failed: {e}")
+            print(f"[Weather] Error: {e}")
 
-    # ── General search — DuckDuckGo HTML ─────────────────────────────────────
+    # ── General search — Tavily ───────────────────────────────────────────────
+    if not search_context and tavily_key:
+        try:
+            resp = req.post(
+                "https://api.tavily.com/search",
+                json={
+                    "api_key": tavily_key,
+                    "query":   query,
+                    "max_results": 5,
+                    "include_answer": True,
+                },
+                timeout=15
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                # Use Tavily's direct answer if available
+                if data.get("answer"):
+                    search_context += f"Answer: {data['answer']}\n"
+                # Add top results
+                for r in data.get("results", [])[:3]:
+                    search_context += f"• {r.get('title','')}: {r.get('content','')[:200]}\n"
+                print(f"[Tavily] Got {len(data.get('results',[]))} results")
+            else:
+                print(f"[Tavily] Error {resp.status_code}: {resp.text[:100]}")
+        except Exception as e:
+            print(f"[Tavily] Error: {e}")
+
+    # ── Fallback — DuckDuckGo HTML ────────────────────────────────────────────
     if not search_context:
         try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/120.0.0.0 Safari/537.36"
-            }
-            url  = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-            resp = req.get(url, headers=headers, timeout=12)
+            headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+            resp    = req.get(
+                f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}",
+                headers=headers, timeout=12
+            )
             if resp.status_code == 200:
                 from bs4 import BeautifulSoup
                 soup     = BeautifulSoup(resp.text, "html.parser")
-                snippets = soup.find_all("a", class_="result__snippet", limit=5)
-                titles   = soup.find_all("a", class_="result__a", limit=5)
-                for t, s in zip(titles, snippets):
-                    search_context += f"• {t.get_text()}: {s.get_text()}\n"
-                print(f"[Search] Got {len(snippets)} results")
+                snippets = soup.find_all("a", class_="result__snippet", limit=4)
+                for s in snippets:
+                    search_context += f"• {s.get_text()}\n"
+                print(f"[DDG] Got {len(snippets)} results")
         except Exception as e:
-            print(f"[Search] DuckDuckGo failed: {e}")
+            print(f"[DDG] Error: {e}")
 
-    # ── Ask Groq with context ─────────────────────────────────────────────────
-    system_msg = (
+    # ── Ask Groq ──────────────────────────────────────────────────────────────
+    system_msg   = (
         f"You are {Assistantname}, an advanced AI assistant.\n"
         f"Current date/time: {now.strftime('%A, %d %B %Y, %H:%M')}.\n"
-        f"Answer the user's question accurately and professionally."
+        f"Answer accurately and professionally."
     )
-
-    user_content = query
-    if search_context:
-        user_content = f"Based on this data:\n{search_context}\n\nAnswer: {query}"
+    user_content = f"Based on this data:\n{search_context}\n\nQuestion: {query}" if search_context else query
 
     try:
         completion = groq_client.chat.completions.create(
@@ -178,7 +182,7 @@ def web_search_and_answer(query: str) -> str:
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[WebSearch] Groq error: {e}")
+        print(f"[Groq] Error: {e}")
         return "Sorry, I encountered an error. Please try again."
 
 # ── Browser automation helper ─────────────────────────────────────────────────
