@@ -101,16 +101,28 @@ def web_search_and_answer(query: str) -> str:
                                        "rain", "sunny", "humid", "hot", "cold",
                                        "climate", "mausam"]):
         try:
-            # Extract city name
-            city = query_lower
-            for remove in ["how is the", "what is the", "tell me", "weather in",
-                           "weather of", "temperature in", "temperature of",
-                           "forecast for", "forecast in", "weather", "temperature",
-                           "forecast", "mausam", "?", "."]:
-                city = city.replace(remove, "").strip()
-            city = city.strip()
-            if not city:
+            import re
+            # Extract city — look for "in X" or "of X" pattern
+            city_match = re.search(r'\bin\s+([a-zA-Z\s]+?)(?:\?|$|\.)', query_lower)
+            if not city_match:
+                city_match = re.search(r'\bof\s+([a-zA-Z\s]+?)(?:\?|$|\.)', query_lower)
+            
+            if city_match:
+                city = city_match.group(1).strip()
+            else:
+                # Fallback — remove common words
+                city = query_lower
+                for remove in ["how is the", "how was the", "what is the",
+                               "what was the", "tell me", "weather in", "weather of",
+                               "temperature in", "temperature of", "forecast for",
+                               "forecast in", "weather", "temperature", "forecast",
+                               "mausam", "current", "today", "?", "."]:
+                    city = city.replace(remove, "").strip()
+                city = city.strip()
+
+            if not city or len(city) < 2:
                 city = "Peshawar"
+
             print(f"[Weather] Fetching weather for: {city}")
             url  = f"https://wttr.in/{city.replace(' ', '+')}?format=4"
             resp = req.get(url, timeout=10,
@@ -291,8 +303,22 @@ async def chat_ws(ws: WebSocket):
                 # ── General chat ──────────────────────────────────
                 if d.startswith("general"):
                     q = d.removeprefix("general").strip() or query
-                    await send({"type": "status", "text": "Generating response..."})
-                    answer = await asyncio.to_thread(ChatBot, q)
+                    # If query has realtime keywords, use web search instead
+                    realtime_keywords = [
+                        "weather", "temperature", "price", "news", "today",
+                        "current", "latest", "now", "forecast", "stock",
+                        "rate", "score", "result", "live", "update", "mausam"
+                    ]
+                    if any(kw in q.lower() for kw in realtime_keywords):
+                        await send({"type": "status", "text": "Searching the web..."})
+                        try:
+                            answer = await asyncio.to_thread(web_search_and_answer, q)
+                        except Exception as e:
+                            print(f"[WS] Search error: {e}")
+                            answer = await asyncio.to_thread(ChatBot, q)
+                    else:
+                        await send({"type": "status", "text": "Generating response..."})
+                        answer = await asyncio.to_thread(ChatBot, q)
                     await stream_answer(ws, answer)
                     answered = True
 
